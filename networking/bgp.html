@@ -84,6 +84,8 @@
   }
   .node-box{cursor:pointer}
   .node-box:hover rect{filter:brightness(.96)}
+  .node-box.has-link text{text-decoration:underline}
+  .node-box.has-link:hover text{fill:#1cd9a4}
   .editor-toggle{position:absolute;left:12px;top:12px;z-index:50}
   @media (max-width:760px){
     main{flex-direction:column}
@@ -122,8 +124,8 @@
 
 <main>
   <section id="editor-pane">
-    <div class="pane-head"><span>Outline</span><em>Tab indents · Shift+Tab outdents</em></div>
-    <textarea id="src" spellcheck="false" placeholder="Type a root topic, then indent with Tab to add branches."></textarea>
+    <div class="pane-head"><span>Outline</span><em>Use [text](url) for links</em></div>
+    <textarea id="src" spellcheck="false" placeholder="Type a root topic, then indent with Tab to add branches. Use [text](url) syntax for clickable links."></textarea>
   </section>
   <div id="splitter"></div>
   <section id="canvas-pane">
@@ -134,7 +136,7 @@
       <button id="zout" title="Zoom out">−</button>
       <button id="reset" title="Reset zoom">100%</button>
     </div>
-    <div id="hint">Drag to pan · scroll to zoom · click a node to collapse</div>
+    <div id="hint">Drag to pan · scroll to zoom · click a node to collapse · click links to navigate</div>
   </section>
 </main>
 
@@ -144,8 +146,8 @@
 
 const SAMPLE = `BGP - Border Gateway Protocol
   Fundamentals
-    What is BGP
-    BGP vs IGP
+    [What is BGP](https://en.wikipedia.org/wiki/Border_Gateway_Protocol)
+    [BGP vs IGP](https://www.cisco.com/c/en/us/support/docs/ip/border-gateway-protocol-bgp/25602-bgp-igp.html)
     Autonomous Systems (AS)
   BGP Basics
     BGP Message Types
@@ -157,7 +159,7 @@ const SAMPLE = `BGP - Border Gateway Protocol
       Idle
       Connect
       Active
-      OpenSent
+      [OpenSent](https://datatracker.ietf.org/doc/html/rfc4271)
       OpenConfirm
       Established
   BGP Attributes
@@ -195,16 +197,25 @@ function parse(text){
   const rows = lines.map(l => {
     const m = l.match(/^[\t ]*/)[0];
     const indent = m.replace(/\t/g,"  ").length;
-    const label = l.trim().replace(/^([-*+]|#{1,6}|\d+[.)])\s+/,"");
-    return {indent, label};
+    let label = l.trim().replace(/^([-*+]|#{1,6}|\d+[.)])\s+/,"");
+    let url = null;
+    
+    // Extract markdown link [text](url)
+    const linkMatch = label.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if(linkMatch){
+      label = linkMatch[1];
+      url = linkMatch[2];
+    }
+    
+    return {indent, label, url};
   });
-  const root = {label: rows[0].label, children: [], depth: 0};
+  const root = {label: rows[0].label, children: [], depth: 0, url: rows[0].url || null};
   const stack = [{indent: rows[0].indent, node: root}];
   for(let i=1;i<rows.length;i++){
     const r = rows[i];
     while(stack.length > 1 && r.indent <= stack[stack.length-1].indent) stack.pop();
     const parent = stack[stack.length-1].node;
-    const node = {label: r.label, children: [], depth: parent.depth + 1};
+    const node = {label: r.label, children: [], depth: parent.depth + 1, url: r.url || null};
     parent.children.push(node);
     stack.push({indent: r.indent, node});
   }
@@ -378,6 +389,7 @@ function render(fit){
     const p = pal[Math.min(n.depth, pal.length-1)];
     const grp = el("g", {class:"node-box", tabindex:"0", role:"button",
                          "aria-label":n.label + (n.children.length ? " — toggle branch" : "")});
+    if(n.url) grp.classList.add("has-link");
     grp.appendChild(el("rect", {
       x:n.x, y:n.y - n.h/2, width:n.w, height:n.h,
       rx: n.depth===0 ? n.h/2 : 9,
@@ -411,8 +423,24 @@ function render(fit){
       collapsed.has(n.id) ? collapsed.delete(n.id) : collapsed.add(n.id);
       render(false);
     };
-    grp.addEventListener("click", toggle);
-    grp.addEventListener("keydown", e => { if(e.key==="Enter"||e.key===" "){ e.preventDefault(); toggle(); }});
+    const handleClick = (e) => {
+      if(n.url){
+        window.open(n.url, '_blank');
+      } else if(n.children.length){
+        toggle();
+      }
+    };
+    grp.addEventListener("click", handleClick);
+    grp.addEventListener("keydown", e => { 
+      if(e.key==="Enter"||e.key===" "){ 
+        e.preventDefault(); 
+        if(n.url){
+          window.open(n.url, '_blank');
+        } else if(n.children.length){
+          toggle();
+        }
+      }
+    });
     boxes.appendChild(grp);
   }
 
