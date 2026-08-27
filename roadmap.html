@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interactive Roadmap — Plan & Visualize Your Journey</title>
+<style>
+  :root{
+    --ink:#0f1720;
+    --panel:#151f2a;
+    --panel-2:#1c2836;
+    --line:#26333f;
+    --text:#e6edf3;
+    --muted:#8b9bab;
+    --teal:#19a88c;
+    --teal-dim:#12766244;
+    --amber:#e08a2e;
+    --paper:#f7f8fa;
+    --grid:#e2e6ec;
+    --radius:8px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:var(--ink);
+    color:var(--text);
+    font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    display:flex;flex-direction:column;overflow:hidden;
+  }
+  header{
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line);
+  }
+  .brand{display:flex;align-items:baseline;gap:9px;margin-right:4px}
+  .brand b{font-size:15px;letter-spacing:.2px}
+  .brand span{color:var(--muted);font-size:11px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .group{display:flex;align-items:center;gap:6px}
+  .sep{width:1px;height:22px;background:var(--line)}
+  button,select{
+    font:inherit;font-size:12.5px;color:var(--text);
+    background:var(--panel-2);border:1px solid var(--line);border-radius:6px;
+    padding:6px 11px;cursor:pointer;transition:border-color .12s,background .12s;
+  }
+  button:hover,select:hover{border-color:#3b4b5c;background:#22303f}
+  button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--teal);outline-offset:1px}
+  button.primary{background:var(--teal);border-color:var(--teal);color:#04221c;font-weight:600}
+  button.primary:hover{background:#1cbd9c;border-color:#1cbd9c}
+  label.toggle{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12.5px;cursor:pointer}
+  main{flex:1;display:flex;min-height:0}
+  #editor-pane{
+    width:320px;min-width:200px;max-width:60vw;
+    display:flex;flex-direction:column;background:var(--panel);border-right:1px solid var(--line);
+  }
+  .pane-head{
+    padding:9px 13px;color:var(--muted);font-size:11px;letter-spacing:.9px;text-transform:uppercase;
+    border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;
+  }
+  .pane-head em{font-style:normal;text-transform:none;letter-spacing:0;font-size:11px;opacity:.75}
+  textarea{
+    flex:1;width:100%;resize:none;border:0;padding:14px;
+    background:transparent;color:var(--text);
+    font:13px/1.75 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    tab-size:2;
+  }
+  textarea::placeholder{color:#4d5f70}
+  #splitter{width:5px;cursor:col-resize;background:var(--ink)}
+  #splitter:hover{background:var(--teal-dim)}
+  #canvas-pane{flex:1;position:relative;min-width:0;background:var(--paper)}
+  #map{width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+  #map.dragging{cursor:grabbing}
+  .float{
+    position:absolute;left:12px;bottom:12px;display:flex;gap:6px;
+    background:rgba(21,31,42,.92);border:1px solid var(--line);border-radius:var(--radius);padding:5px;
+  }
+  .float button{padding:5px 9px;font-size:12px}
+  #hint{
+    position:absolute;right:12px;bottom:12px;color:#7b8794;font-size:11.5px;
+    background:rgba(255,255,255,.82);border:1px solid var(--grid);border-radius:6px;padding:5px 9px;
+  }
+  .node-box{cursor:pointer}
+  .node-box:hover rect{filter:brightness(.96)}
+  .status-badge{font-size:9px;font-weight:700;display:flex;align-items:center;gap:3px}
+  .status-done{color:#2ecc71}
+  .status-progress{color:#f39c12}
+  .status-todo{color:#e74c3c}
+  @media (max-width:760px){
+    #editor-pane{width:100%;max-width:none}
+    main{flex-direction:column}
+    #splitter{display:none}
+    #editor-pane{height:38%}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><b>Interactive Roadmap</b><span>offline · visual planning</span></div>
+  <div class="sep"></div>
+  <div class="group">
+    <select id="layout" title="Branch direction">
+      <option value="right">Branches right</option>
+      <option value="balanced">Branches both sides</option>
+    </select>
+    <select id="theme" title="Node palette">
+      <option value="progress">Blue → Green (Progress)</option>
+      <option value="priority">Red → Yellow (Priority)</option>
+      <option value="depth">Depth spectrum</option>
+      <option value="mono">Slate mono</option>
+    </select>
+    <label class="toggle"><input type="checkbox" id="grid" checked> Grid</label>
+  </div>
+  <div class="sep"></div>
+  <div class="group">
+    <button id="fit">Fit to view</button>
+    <button id="expand">Expand all</button>
+  </div>
+  <div class="sep"></div>
+  <div class="group">
+    <button id="save">Save roadmap</button>
+    <button id="open">Open roadmap</button>
+    <button id="png">Export PNG</button>
+    <button class="primary" id="svg">Export SVG</button>
+  </div>
+  <input type="file" id="file" accept=".txt,.md,.roadmap.txt" hidden>
+</header>
+
+<main>
+  <section id="editor-pane">
+    <div class="pane-head"><span>Roadmap Outline</span><em>Tab to indent · Shift+Tab to outdent</em></div>
+    <textarea id="src" spellcheck="false" placeholder="Create your roadmap here. Format: [status] Name (status: ✓ done, → progress, ○ todo)"></textarea>
+  </section>
+  <div id="splitter"></div>
+  <section id="canvas-pane">
+    <svg id="map"></svg>
+    <div class="float">
+      <button id="zin" title="Zoom in">+</button>
+      <button id="zout" title="Zoom out">−</button>
+      <button id="reset" title="Reset zoom">100%</button>
+    </div>
+    <div id="hint">Drag to pan · scroll to zoom · click a node to collapse</div>
+  </section>
+</main>
+
+<script>
+(function(){
+"use strict";
+
+const SAMPLE = `Product Launch 2024
+  Q1 Planning
+    Market Research
+    Competitor Analysis
+    Requirements Gathering
+  Q2 Development
+    UI/UX Design
+    Backend Development
+    Frontend Development
+    Database Setup
+  Q3 Testing
+    Unit Testing
+    Integration Testing
+    User Acceptance Testing
+  Q4 Release
+    Documentation
+    Marketing Campaign
+    Launch Preparation
+    Go Live`;
+
+function parseStatus(label){
+  const statusMap = {
+    '✓': 'done',
+    '→': 'progress',
+    '○': 'todo'
+  };
+  
+  for(const [sym, status] of Object.entries(statusMap)){
+    if(label.startsWith(sym)){
+      return {status, label: label.slice(1).trim()};
+    }
+  }
+  return {status: 'todo', label};
+}
+
+function parse(text){
+  const lines = text.replace(/\r/g,"").split("\n").filter(l => l.trim().length);
+  if(!lines.length) return null;
+  
+  const rows = lines.map(l => {
+    const m = l.match(/^[\t ]*/)[0];
+    const indent = m.replace(/\t/g,"  ").length;
+    const labelPart = l.trim().replace(/^([-*+]|#{1,6}|\d+[.)])\s+/,"");
+    const {status, label} = parseStatus(labelPart);
+    return {indent, label, status};
+  });
+  
+  const root = {label: rows[0].label, status: rows[0].status, children: [], depth: 0};
+  const stack = [{indent: rows[0].indent, node: root}];
+  
+  for(let i=1;i<rows.length;i++){
+    const r = rows[i];
+    while(stack.length > 1 && r.indent <= stack[stack.length-1].indent) stack.pop();
+    const parent = stack[stack.length-1].node;
+    const node = {label: r.label, status: r.status, children: [], depth: parent.depth + 1};
+    parent.children.push(node);
+    stack.push({indent: r.indent, node});
+  }
+  return root;
+}
+
+const mc = document.createElement("canvas").getContext("2d");
+const FONT = (d) => (d===0 ? "600 17px" : d===1 ? "600 12px" : "500 11.5px") +
+  ' -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
+
+function wrap(label, depth){
+  const max = depth===0 ? 210 : 120;
+  mc.font = FONT(depth);
+  const words = label.split(/\s+/);
+  const lines = []; let cur = "";
+  for(const w of words){
+    const test = cur ? cur+" "+w : w;
+    if(mc.measureText(test).width > max && cur){ lines.push(cur); cur = w; }
+    else cur = test;
+  }
+  if(cur) lines.push(cur);
+  const width = Math.max(...lines.map(l => mc.measureText(l).width));
+  return {lines, width};
+}
+
+const HGAP = 62, VGAP = 14, PADX = 16, PADY = 10, LINEH = 15;
+
+function measure(node){
+  const w = wrap(node.label, node.depth);
+  node.lines = w.lines;
+  node.w = Math.round(w.width + PADX*2);
+  node.h = Math.round(w.lines.length*LINEH + PADY*2);
+  if(node.depth === 0) node.h += 8;
+  node.children.forEach(measure);
+}
+
+function layout(root, mode, collapsed){
+  measure(root);
+  const isOpen = n => n.children.length && !collapsed.has(n.id);
+
+  let sides;
+  if(mode === "balanced" && root.children.length > 3){
+    const half = Math.ceil(root.children.length/2);
+    sides = [{dir:1, kids:root.children.slice(0,half)}, {dir:-1, kids:root.children.slice(half)}];
+  } else {
+    sides = [{dir:1, kids:root.children}];
+  }
+
+  const bounds = [];
+  for(const side of sides){
+    let cursor = 0;
+    const place = (n, parent) => {
+      n.dir = side.dir;
+      n.x = side.dir > 0 ? parent.x + parent.w + HGAP : parent.x - HGAP - n.w;
+      if(isOpen(n)){
+        n.children.forEach(c => place(c, n));
+        const f = n.children[0], l = n.children[n.children.length-1];
+        n.y = (f.y + l.y)/2;
+      } else {
+        n.y = cursor + n.h/2;
+        cursor += n.h + VGAP;
+        return;
+      }
+      cursor = Math.max(cursor, n.y + n.h/2 + VGAP);
+    };
+    root.x = 0; root.y = 0;
+    side.kids.forEach(k => place(k, root));
+    if(side.kids.length){
+      const f = side.kids[0], l = side.kids[side.kids.length-1];
+      bounds.push([f.y - f.h/2, l.y + l.h/2]);
+    }
+  }
+
+  const top = bounds.length ? Math.min(...bounds.map(b=>b[0])) : -root.h/2;
+  const bot = bounds.length ? Math.max(...bounds.map(b=>b[1])) : root.h/2;
+  root.y = (top + bot)/2;
+  root.dir = 1;
+  return root;
+}
+
+const THEMES = {
+  progress: [
+    {fill:"#c8e6c9", stroke:"#2e7d32", text:"#14361a"},
+    {fill:"#bbdefb", stroke:"#1565c0", text:"#0d2b4d"},
+    {fill:"#c8e6c9", stroke:"#388e3c", text:"#1b5e20"},
+    {fill:"#fff9c4", stroke:"#f57f17", text:"#f57f17"}
+  ],
+  priority: [
+    {fill:"#ffcdd2", stroke:"#c62828", text:"#4d1113"},
+    {fill:"#ffccbc", stroke:"#d84315", text:"#4d1113"},
+    {fill:"#ffe0b2", stroke:"#ef6c00", text:"#4a2600"},
+    {fill:"#fff9c4", stroke:"#f57f17", text:"#4d1113"}
+  ],
+  depth: [
+    {fill:"#c8e6c9", stroke:"#2e7d32", text:"#14361a"},
+    {fill:"#bbdefb", stroke:"#1565c0", text:"#0d2b4d"},
+    {fill:"#e1bee7", stroke:"#7b1fa2", text:"#3b1043"},
+    {fill:"#ffcdd2", stroke:"#c62828", text:"#4d1113"}
+  ],
+  mono: [
+    {fill:"#dfe5ec", stroke:"#33465a", text:"#16222e"},
+    {fill:"#eef1f5", stroke:"#5b6f84", text:"#22303d"},
+    {fill:"#f5f7f9", stroke:"#8496a8", text:"#2c3a47"},
+    {fill:"#fafbfc", stroke:"#a9b6c2", text:"#3a4753"}
+  ]
+};
+
+const NS = "http://www.w3.org/2000/svg";
+const svg = document.getElementById("map");
+const collapsed = new Set();
+let root = null, view = {k:1, x:0, y:0}, viewport = null, extent = null;
+
+const el = (name, attrs) => {
+  const e = document.createElementNS(NS, name);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+};
+
+function flatten(n, out){
+  out.push(n);
+  if(n.children.length && !collapsed.has(n.id)) n.children.forEach(c => flatten(c, out));
+  return out;
+}
+
+function assignIds(n, path){
+  n.id = path;
+  n.children.forEach((c,i) => assignIds(c, path + "/" + i + ":" + c.label));
+}
+
+function render(fit){
+  const text = document.getElementById("src").value;
+  const tree = parse(text);
+  svg.textContent = "";
+  if(!tree){ return; }
+  assignIds(tree, "0:" + tree.label);
+  root = layout(tree, document.getElementById("layout").value, collapsed);
+
+  const pal = THEMES[document.getElementById("theme").value];
+  const nodes = flatten(root, []);
+
+  const defs = el("defs");
+  const pat = el("pattern", {id:"grid", width:20, height:20, patternUnits:"userSpaceOnUse"});
+  pat.appendChild(el("path", {d:"M20 0 L0 0 0 20", fill:"none", stroke:"#e2e6ec", "stroke-width":1}));
+  defs.appendChild(pat);
+  svg.appendChild(defs);
+  const bg = el("rect", {id:"bg", x:"-100000", y:"-100000", width:"200000", height:"200000",
+                         fill: document.getElementById("grid").checked ? "url(#grid)" : "#f7f8fa"});
+  svg.appendChild(bg);
+
+  const g = el("g", {id:"scene"});
+  svg.appendChild(g);
+  const links = el("g"), boxes = el("g");
+  g.appendChild(links); g.appendChild(boxes);
+
+  for(const n of nodes){
+    if(!n.children.length || collapsed.has(n.id)) continue;
+    for(const c of n.children){
+      const px = c.dir > 0 ? n.x + n.w : n.x;
+      const cx = c.dir > 0 ? c.x : c.x + c.w;
+      const dx = (cx - px) * 0.55;
+      const stroke = pal[Math.min(c.depth, pal.length-1)].stroke;
+      links.appendChild(el("path", {
+        d:`M${px},${n.y} C${px+dx},${n.y} ${cx-dx},${c.y} ${cx},${c.y}`,
+        fill:"none", stroke:"#31404e", "stroke-width":1.4, "stroke-opacity":.85
+      }));
+      links.appendChild(el("circle", {cx:cx, cy:c.y, r:3, fill:stroke}));
+    }
+  }
+
+  for(const n of nodes){
+    const p = pal[Math.min(n.depth, pal.length-1)];
+    const grp = el("g", {class:"node-box", tabindex:"0", role:"button",
+                         "aria-label":n.label + (n.children.length ? " — toggle branch" : "")});
+    grp.appendChild(el("rect", {
+      x:n.x, y:n.y - n.h/2, width:n.w, height:n.h,
+      rx: n.depth===0 ? n.h/2 : 9,
+      fill:p.fill, stroke:p.stroke, "stroke-width": n.depth===0 ? 2 : 1.3
+    }));
+    const startY = n.y - ((n.lines.length-1)*LINEH)/2 + (n.depth===0 ? 1 : 0);
+    n.lines.forEach((line,i) => {
+      const t = el("text", {
+        x:n.x + n.w/2, y:startY + i*LINEH, "text-anchor":"middle",
+        "dominant-baseline":"central", fill:p.text,
+        "font-family":'-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif',
+        "font-size": n.depth===0 ? 17 : n.depth===1 ? 12 : 11.5,
+        "font-weight": n.depth<=1 ? 600 : 500
+      });
+      t.textContent = line;
+      grp.appendChild(t);
+    });
+    
+    if(n.children.length){
+      const bx = n.dir > 0 ? n.x + n.w : n.x;
+      const badge = el("g");
+      badge.appendChild(el("circle", {cx:bx, cy:n.y - n.h/2 + 4, r:7.5, fill:"#ffffff", stroke:p.stroke, "stroke-width":1.2}));
+      const bt = el("text", {x:bx, y:n.y - n.h/2 + 4, "text-anchor":"middle", "dominant-baseline":"central",
+                             "font-size":9.5, "font-weight":700, fill:p.stroke,
+                             "font-family":'ui-monospace,Menlo,Consolas,monospace'});
+      bt.textContent = collapsed.has(n.id) ? String(n.children.length) : "–";
+      badge.appendChild(bt);
+      grp.appendChild(badge);
+    }
+    
+    const toggle = () => {
+      if(!n.children.length) return;
+      collapsed.has(n.id) ? collapsed.delete(n.id) : collapsed.add(n.id);
+      render(false);
+    };
+    grp.addEventListener("click", toggle);
+    grp.addEventListener("keydown", e => { if(e.key==="Enter"||e.key===" "){ e.preventDefault(); toggle(); }});
+    boxes.appendChild(grp);
+  }
+
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  for(const n of nodes){
+    x0=Math.min(x0,n.x); x1=Math.max(x1,n.x+n.w);
+    y0=Math.min(y0,n.y-n.h/2); y1=Math.max(y1,n.y+n.h/2);
+  }
+  extent = {x0,y0,x1,y1,w:x1-x0,h:y1-y0};
+  viewport = g;
+  if(fit) fitView(); else applyView();
+}
+
+function applyView(){
+  if(viewport) viewport.setAttribute("transform", `translate(${view.x},${view.y}) scale(${view.k})`);
+}
+
+function fitView(){
+  if(!extent) return;
+  const r = svg.getBoundingClientRect(), pad = 46;
+  const k = Math.min((r.width-pad*2)/extent.w, (r.height-pad*2)/extent.h, 1.6);
+  view.k = isFinite(k) && k > 0 ? k : 1;
+  view.x = r.width/2 - (extent.x0 + extent.w/2)*view.k;
+  view.y = r.height/2 - (extent.y0 + extent.h/2)*view.k;
+  applyView();
+}
+
+let drag = null;
+svg.addEventListener("pointerdown", e => {
+  if(e.target.closest(".node-box")) return;
+  drag = {x:e.clientX, y:e.clientY, vx:view.x, vy:view.y};
+  svg.classList.add("dragging");
+  svg.setPointerCapture(e.pointerId);
+});
+svg.addEventListener("pointermove", e => {
+  if(!drag) return;
+  view.x = drag.vx + (e.clientX - drag.x);
+  view.y = drag.vy + (e.clientY - drag.y);
+  applyView();
+});
+["pointerup","pointercancel"].forEach(t => svg.addEventListener(t, () => { drag=null; svg.classList.remove("dragging"); }));
+svg.addEventListener("wheel", e => {
+  e.preventDefault();
+  const r = svg.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  const f = e.deltaY < 0 ? 1.12 : 1/1.12;
+  const k = Math.min(4, Math.max(0.15, view.k * f));
+  view.x = mx - (mx - view.x) * (k/view.k);
+  view.y = my - (my - view.y) * (k/view.k);
+  view.k = k; applyView();
+}, {passive:false});
+
+function zoomBy(f){
+  const r = svg.getBoundingClientRect(), mx = r.width/2, my = r.height/2;
+  const k = Math.min(4, Math.max(0.15, view.k*f));
+  view.x = mx - (mx - view.x)*(k/view.k);
+  view.y = my - (my - view.y)*(k/view.k);
+  view.k = k; applyView();
+}
+
+function serialize(scale){
+  const clone = svg.cloneNode(true);
+  const pad = 30;
+  const w = Math.ceil(extent.w + pad*2), h = Math.ceil(extent.h + pad*2);
+  clone.setAttribute("width", w*scale);
+  clone.setAttribute("height", h*scale);
+  clone.setAttribute("viewBox", `${extent.x0-pad} ${extent.y0-pad} ${w} ${h}`);
+  clone.setAttribute("xmlns", NS);
+  const bg = clone.querySelector("#bg");
+  if(bg) bg.setAttribute("fill", document.getElementById("grid").checked ? "url(#grid)" : "#ffffff");
+  const scene = clone.querySelector("#scene");
+  if(scene) scene.removeAttribute("transform");
+  return {xml:'<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(clone), w:w*scale, h:h*scale};
+}
+
+function download(blob, name){
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+const stem = () => (parse(document.getElementById("src").value)?.label || "roadmap")
+  .replace(/[^\w\- ]+/g,"").trim().replace(/\s+/g,"-").toLowerCase() || "roadmap";
+
+document.getElementById("svg").onclick = () => {
+  const {xml} = serialize(1);
+  download(new Blob([xml], {type:"image/svg+xml"}), stem()+".svg");
+};
+document.getElementById("png").onclick = () => {
+  const {xml,w,h} = serialize(2);
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    const cx = c.getContext("2d");
+    cx.fillStyle = "#ffffff"; cx.fillRect(0,0,w,h);
+    cx.drawImage(img, 0, 0, w, h);
+    c.toBlob(b => download(b, stem()+".png"), "image/png");
+  };
+  img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(xml)));
+};
+document.getElementById("save").onclick = () =>
+  download(new Blob([document.getElementById("src").value], {type:"text/plain"}), stem()+".txt");
+document.getElementById("open").onclick = () => document.getElementById("file").click();
+document.getElementById("file").onchange = e => {
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = () => { document.getElementById("src").value = r.result; collapsed.clear(); render(true); };
+  r.readAsText(f);
+  e.target.value = "";
+};
+
+const src = document.getElementById("src");
+let t = null;
+src.addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => render(false), 160); });
+src.addEventListener("keydown", e => {
+  if(e.key !== "Tab") return;
+  e.preventDefault();
+  const s = src.selectionStart, en = src.selectionEnd, v = src.value;
+  const ls = v.lastIndexOf("\n", s-1)+1;
+  const le = v.indexOf("\n", en) === -1 ? v.length : v.indexOf("\n", en);
+  const block = v.slice(ls, le);
+  const out = e.shiftKey
+    ? block.split("\n").map(l => l.replace(/^ {1,2}|^\t/,"")).join("\n")
+    : block.split("\n").map(l => "  " + l).join("\n");
+  src.value = v.slice(0,ls) + out + v.slice(le);
+  src.selectionStart = ls; src.selectionEnd = ls + out.length;
+  clearTimeout(t); t = setTimeout(() => render(false), 60);
+});
+
+document.getElementById("layout").onchange = () => render(true);
+document.getElementById("theme").onchange = () => render(false);
+document.getElementById("grid").onchange = () => render(false);
+document.getElementById("fit").onclick = () => fitView();
+document.getElementById("expand").onclick = () => { collapsed.clear(); render(true); };
+document.getElementById("zin").onclick = () => zoomBy(1.2);
+document.getElementById("zout").onclick = () => zoomBy(1/1.2);
+document.getElementById("reset").onclick = () => { view.k = 1; applyView(); };
+window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(() => render(false), 120); });
+
+const sp = document.getElementById("splitter"), pane = document.getElementById("editor-pane");
+sp.addEventListener("pointerdown", e => {
+  sp.setPointerCapture(e.pointerId);
+  const move = ev => { pane.style.width = Math.max(200, Math.min(ev.clientX, window.innerWidth*0.6)) + "px"; };
+  const up = () => { sp.removeEventListener("pointermove", move); sp.removeEventListener("pointerup", up); render(false); };
+  sp.addEventListener("pointermove", move); sp.addEventListener("pointerup", up);
+});
+
+src.value = SAMPLE;
+render(true);
+setTimeout(() => fitView(), 60);
+})();
+</script>
+</body>
+</html>
