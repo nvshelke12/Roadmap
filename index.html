@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roadmap Hub — Learning Paths</title>
+<style>
+  :root{
+    --ink:#0f1720;
+    --panel:#151f2a;
+    --panel-2:#1c2836;
+    --line:#26333f;
+    --text:#e6edf3;
+    --muted:#8b9bab;
+    --teal:#19a88c;
+    --amber:#e08a2e;
+    --paper:#f7f8fa;
+    --grid:#e2e6ec;
+    --radius:8px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:var(--ink);
+    color:var(--text);
+    font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    display:flex;flex-direction:column;
+  }
+  header{
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:20px 30px;background:var(--panel);border-bottom:1px solid var(--line);
+  }
+  .brand{display:flex;align-items:baseline;gap:9px}
+  .brand b{font-size:24px;letter-spacing:.2px;font-weight:700}
+  .brand span{color:var(--muted);font-size:12px}
+  main{flex:1;padding:40px 30px}
+  .container{max-width:1200px;margin:0 auto}
+  h1{margin:0 0 10px 0;font-size:32px}
+  .subtitle{color:var(--muted);margin-bottom:40px;font-size:15px}
+  
+  .categories-grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;margin-bottom:40px;
+  }
+  
+  .category-card{
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px;
+    cursor:pointer;transition:all .2s;
+  }
+  .category-card:hover{
+    border-color:var(--teal);
+    box-shadow:0 8px 24px rgba(25,168,140,0.1);
+    transform:translateY(-2px);
+  }
+  
+  .category-icon{
+    font-size:32px;margin-bottom:12px;display:block;
+  }
+  .category-title{
+    font-size:18px;font-weight:600;margin-bottom:8px;color:var(--text)
+  }
+  .category-desc{
+    font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:16px;
+  }
+  .roadmap-count{
+    display:inline-block;background:var(--panel-2);color:var(--teal);
+    padding:4px 10px;border-radius:4px;font-size:12px;font-weight:600;
+  }
+  
+  .roadmap-list{
+    margin-top:16px;padding-top:16px;border-top:1px solid var(--line);
+  }
+  .roadmap-item{
+    display:flex;align-items:center;gap:10px;padding:8px 0;font-size:13px;color:var(--muted);
+  }
+  .roadmap-item:before{content:"→";margin-right:4px;color:var(--teal)}
+  .roadmap-item a{color:var(--text);text-decoration:none;transition:color .2s}
+  .roadmap-item a:hover{color:var(--teal)}
+  
+  footer{
+    padding:20px 30px;background:var(--panel);border-top:1px solid var(--line);
+    text-align:center;color:var(--muted);font-size:12px;
+  }
+  
+  @media (max-width:768px){
+    header{padding:15px 20px}
+    main{padding:20px 20px}
+    .categories-grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <b>📚 Roadmap Hub</b>
+    <span>Structured learning paths</span>
+  </div>
+</header>
+
+<main>
+  <div class="container">
+    <h1>Learning Roadmaps</h1>
+    <p class="subtitle">Choose a category to explore structured learning paths</p>
+    
+    <div class="categories-grid" id="categories">
+      <!-- Categories will be inserted here -->
+    </div>
+  </div>
+</main>
+
+<footer>
+  <p>🚀 Build your skills with structured learning paths | All roadmaps are interactive and exportable</p>
+</footer>
+
+<script>
+// Roadmap structure
+const roadmaps = {
+  networking: {
+    icon: "🌐",
+    title: "Networking",
+    description: "Network protocols, architecture, and infrastructure fundamentals",
+    items: [
+      { name: "BGP", path: "networking/bgp.html" },
+      { name: "OSPF", path: "networking/ospf.html" },
+      { name: "VLAN", path: "networking/vlan.html" }
+    ]
+  },
+  security: {
+    icon: "🔒",
+    title: "Security",
+    description: "Cybersecurity, compliance, and threat prevention strategies",
+    items: [
+      { name: "WAF", path: "security/waf.html" },
+      { name: "IPS", path: "security/ips.html" },
+      { name: "DLP", path: "security/dlp.html" }
+    ]
+  },
+  "cloud-computing": {
+    icon: "☁️",
+    title: "Cloud Computing",
+    description: "Cloud platforms, deployment models, and services",
+    items: [
+      { name: "AWS Fundamentals", path: "cloud-computing/aws.html" },
+      { name: "Kubernetes", path: "cloud-computing/kubernetes.html" },
+      { name: "Microservices", path: "cloud-computing/microservices.html" }
+    ]
+  },
+  devops: {
+    icon: "⚙️",
+    title: "DevOps",
+    description: "Automation, CI/CD, and infrastructure as code",
+    items: [
+      { name: "Docker", path: "devops/docker.html" },
+      { name: "CI/CD Pipeline", path: "devops/cicd.html" },
+      { name: "Infrastructure as Code", path: "devops/iac.html" }
+    ]
+  }
+};
+
+// Render categories
+function renderCategories() {
+  const container = document.getElementById("categories");
+  
+  Object.entries(roadmaps).forEach(([key, category]) => {
+    const card = document.createElement("div");
+    card.className = "category-card";
+    
+    const roadsHTML = category.items
+      .map(item => `
+        <div class="roadmap-item">
+          <a href="${item.path}">${item.name}</a>
+        </div>
+      `)
+      .join("");
+    
+    card.innerHTML = `
+      <span class="category-icon">${category.icon}</span>
+      <div class="category-title">${category.title}</div>
+      <p class="category-desc">${category.description}</p>
+      <span class="roadmap-count">${category.items.length} roadmaps</span>
+      <div class="roadmap-list">
+        ${roadsHTML}
+      </div>
+    `;
+    
+    container.appendChild(card);
+  });
+}
+
+// Initialize
+document.addEventListener("DOMContentLoaded", renderCategories);
+</script>
+
+</body>
+</html>
