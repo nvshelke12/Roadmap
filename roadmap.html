@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Interactive Roadmap — Plan & Visualize Your Journey</title>
+<title>Interactive Roadmap Visualizer</title>
 <style>
   :root{
     --ink:#0f1720;
@@ -29,42 +29,23 @@
   }
   header{
     display:flex;align-items:center;gap:14px;flex-wrap:wrap;
-    padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line);
+    padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line);
+    height:auto;
   }
   .brand{display:flex;align-items:baseline;gap:9px;margin-right:4px}
-  .brand b{font-size:15px;letter-spacing:.2px}
-  .brand span{color:var(--muted);font-size:11px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .brand b{font-size:14px;letter-spacing:.2px}
   .group{display:flex;align-items:center;gap:6px}
-  .sep{width:1px;height:22px;background:var(--line)}
+  .sep{width:1px;height:18px;background:var(--line)}
   button,select{
-    font:inherit;font-size:12.5px;color:var(--text);
+    font:inherit;font-size:12px;color:var(--text);
     background:var(--panel-2);border:1px solid var(--line);border-radius:6px;
-    padding:6px 11px;cursor:pointer;transition:border-color .12s,background .12s;
+    padding:5px 10px;cursor:pointer;transition:border-color .12s,background .12s;
   }
   button:hover,select:hover{border-color:#3b4b5c;background:#22303f}
-  button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--teal);outline-offset:1px}
+  button:focus-visible,select:focus-visible{outline:2px solid var(--teal);outline-offset:1px}
   button.primary{background:var(--teal);border-color:var(--teal);color:#04221c;font-weight:600}
   button.primary:hover{background:#1cbd9c;border-color:#1cbd9c}
-  label.toggle{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12.5px;cursor:pointer}
   main{flex:1;display:flex;min-height:0}
-  #editor-pane{
-    width:320px;min-width:200px;max-width:60vw;
-    display:flex;flex-direction:column;background:var(--panel);border-right:1px solid var(--line);
-  }
-  .pane-head{
-    padding:9px 13px;color:var(--muted);font-size:11px;letter-spacing:.9px;text-transform:uppercase;
-    border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;
-  }
-  .pane-head em{font-style:normal;text-transform:none;letter-spacing:0;font-size:11px;opacity:.75}
-  textarea{
-    flex:1;width:100%;resize:none;border:0;padding:14px;
-    background:transparent;color:var(--text);
-    font:13px/1.75 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
-    tab-size:2;
-  }
-  textarea::placeholder{color:#4d5f70}
-  #splitter{width:5px;cursor:col-resize;background:var(--ink)}
-  #splitter:hover{background:var(--teal-dim)}
   #canvas-pane{flex:1;position:relative;min-width:0;background:var(--paper)}
   #map{width:100%;height:100%;display:block;cursor:grab;touch-action:none}
   #map.dragging{cursor:grabbing}
@@ -74,63 +55,45 @@
   }
   .float button{padding:5px 9px;font-size:12px}
   #hint{
-    position:absolute;right:12px;bottom:12px;color:#7b8794;font-size:11.5px;
+    position:absolute;right:12px;bottom:12px;color:#7b8794;font-size:11px;
     background:rgba(255,255,255,.82);border:1px solid var(--grid);border-radius:6px;padding:5px 9px;
   }
   .node-box{cursor:pointer}
   .node-box:hover rect{filter:brightness(.96)}
-  .status-badge{font-size:9px;font-weight:700;display:flex;align-items:center;gap:3px}
-  .status-done{color:#2ecc71}
-  .status-progress{color:#f39c12}
-  .status-todo{color:#e74c3c}
-  @media (max-width:760px){
-    #editor-pane{width:100%;max-width:none}
-    main{flex-direction:column}
-    #splitter{display:none}
-    #editor-pane{height:38%}
-  }
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
 
 <header>
-  <div class="brand"><b>Interactive Roadmap</b><span>offline · visual planning</span></div>
+  <div class="brand"><b>Roadmap Visualizer</b></div>
   <div class="sep"></div>
   <div class="group">
-    <select id="layout" title="Branch direction">
-      <option value="right">Branches right</option>
-      <option value="balanced">Branches both sides</option>
+    <select id="layout" title="Layout">
+      <option value="right">Right Layout</option>
+      <option value="balanced">Balanced</option>
     </select>
-    <select id="theme" title="Node palette">
-      <option value="progress">Blue → Green (Progress)</option>
-      <option value="priority">Red → Yellow (Priority)</option>
-      <option value="depth">Depth spectrum</option>
-      <option value="mono">Slate mono</option>
+    <select id="theme" title="Color theme">
+      <option value="progress">Progress</option>
+      <option value="priority">Priority</option>
+      <option value="depth">Depth</option>
+      <option value="mono">Mono</option>
     </select>
-    <label class="toggle"><input type="checkbox" id="grid" checked> Grid</label>
+    <label style="display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px;cursor:pointer">
+      <input type="checkbox" id="grid" checked> Grid
+    </label>
   </div>
   <div class="sep"></div>
   <div class="group">
-    <button id="fit">Fit to view</button>
-    <button id="expand">Expand all</button>
-  </div>
-  <div class="sep"></div>
-  <div class="group">
-    <button id="save">Save roadmap</button>
-    <button id="open">Open roadmap</button>
-    <button id="png">Export PNG</button>
+    <button id="fit">Fit</button>
+    <button id="expand">Expand</button>
     <button class="primary" id="svg">Export SVG</button>
+    <button id="png">Export PNG</button>
   </div>
-  <input type="file" id="file" accept=".txt,.md,.roadmap.txt" hidden>
+  <input type="file" id="file" accept=".txt,.md,.json" hidden>
 </header>
 
 <main>
-  <section id="editor-pane">
-    <div class="pane-head"><span>Roadmap Outline</span><em>Tab to indent · Shift+Tab to outdent</em></div>
-    <textarea id="src" spellcheck="false" placeholder="Create your roadmap here. Format: [status] Name (status: ✓ done, → progress, ○ todo)"></textarea>
-  </section>
-  <div id="splitter"></div>
   <section id="canvas-pane">
     <svg id="map"></svg>
     <div class="float">
@@ -138,7 +101,7 @@
       <button id="zout" title="Zoom out">−</button>
       <button id="reset" title="Reset zoom">100%</button>
     </div>
-    <div id="hint">Drag to pan · scroll to zoom · click a node to collapse</div>
+    <div id="hint">Drag to pan · scroll to zoom · click node to collapse</div>
   </section>
 </main>
 
@@ -146,39 +109,37 @@
 (function(){
 "use strict";
 
-const SAMPLE = `Product Launch 2024
+// Parse roadmap data from URL or JSON API
+async function fetchRoadmapData() {
+  const params = new URLSearchParams(window.location.search);
+  const roadmapId = params.get('id');
+  
+  if (roadmapId) {
+    try {
+      const response = await fetch(`/api/roadmap/${roadmapId}`);
+      if (response.ok) {
+        const data = await response.json();
+        return data.outline || data;
+      }
+    } catch (error) {
+      console.error('Failed to fetch roadmap:', error);
+    }
+  }
+  
+  // Default sample if no backend available
+  return `Product Launch 2024
   Q1 Planning
     Market Research
     Competitor Analysis
-    Requirements Gathering
   Q2 Development
     UI/UX Design
     Backend Development
-    Frontend Development
-    Database Setup
   Q3 Testing
     Unit Testing
     Integration Testing
-    User Acceptance Testing
   Q4 Release
     Documentation
-    Marketing Campaign
-    Launch Preparation
     Go Live`;
-
-function parseStatus(label){
-  const statusMap = {
-    '✓': 'done',
-    '→': 'progress',
-    '○': 'todo'
-  };
-  
-  for(const [sym, status] of Object.entries(statusMap)){
-    if(label.startsWith(sym)){
-      return {status, label: label.slice(1).trim()};
-    }
-  }
-  return {status: 'todo', label};
 }
 
 function parse(text){
@@ -188,19 +149,18 @@ function parse(text){
   const rows = lines.map(l => {
     const m = l.match(/^[\t ]*/)[0];
     const indent = m.replace(/\t/g,"  ").length;
-    const labelPart = l.trim().replace(/^([-*+]|#{1,6}|\d+[.)])\s+/,"");
-    const {status, label} = parseStatus(labelPart);
-    return {indent, label, status};
+    const label = l.trim().replace(/^([-*+]|#{1,6}|\d+[.)])\s+/,"");
+    return {indent, label};
   });
   
-  const root = {label: rows[0].label, status: rows[0].status, children: [], depth: 0};
+  const root = {label: rows[0].label, children: [], depth: 0};
   const stack = [{indent: rows[0].indent, node: root}];
   
   for(let i=1;i<rows.length;i++){
     const r = rows[i];
     while(stack.length > 1 && r.indent <= stack[stack.length-1].indent) stack.pop();
     const parent = stack[stack.length-1].node;
-    const node = {label: r.label, status: r.status, children: [], depth: parent.depth + 1};
+    const node = {label: r.label, children: [], depth: parent.depth + 1};
     parent.children.push(node);
     stack.push({indent: r.indent, node});
   }
@@ -331,15 +291,13 @@ function assignIds(n, path){
 }
 
 function render(fit){
-  const text = document.getElementById("src").value;
-  const tree = parse(text);
+  const tree = root;
   svg.textContent = "";
   if(!tree){ return; }
   assignIds(tree, "0:" + tree.label);
-  root = layout(tree, document.getElementById("layout").value, collapsed);
 
   const pal = THEMES[document.getElementById("theme").value];
-  const nodes = flatten(root, []);
+  const nodes = flatten(tree, []);
 
   const defs = el("defs");
   const pat = el("pattern", {id:"grid", width:20, height:20, patternUnits:"userSpaceOnUse"});
@@ -494,7 +452,7 @@ function download(blob, name){
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
-const stem = () => (parse(document.getElementById("src").value)?.label || "roadmap")
+const stem = () => (root?.label || "roadmap")
   .replace(/[^\w\- ]+/g,"").trim().replace(/\s+/g,"-").toLowerCase() || "roadmap";
 
 document.getElementById("svg").onclick = () => {
@@ -514,34 +472,6 @@ document.getElementById("png").onclick = () => {
   };
   img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(xml)));
 };
-document.getElementById("save").onclick = () =>
-  download(new Blob([document.getElementById("src").value], {type:"text/plain"}), stem()+".txt");
-document.getElementById("open").onclick = () => document.getElementById("file").click();
-document.getElementById("file").onchange = e => {
-  const f = e.target.files[0]; if(!f) return;
-  const r = new FileReader();
-  r.onload = () => { document.getElementById("src").value = r.result; collapsed.clear(); render(true); };
-  r.readAsText(f);
-  e.target.value = "";
-};
-
-const src = document.getElementById("src");
-let t = null;
-src.addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => render(false), 160); });
-src.addEventListener("keydown", e => {
-  if(e.key !== "Tab") return;
-  e.preventDefault();
-  const s = src.selectionStart, en = src.selectionEnd, v = src.value;
-  const ls = v.lastIndexOf("\n", s-1)+1;
-  const le = v.indexOf("\n", en) === -1 ? v.length : v.indexOf("\n", en);
-  const block = v.slice(ls, le);
-  const out = e.shiftKey
-    ? block.split("\n").map(l => l.replace(/^ {1,2}|^\t/,"")).join("\n")
-    : block.split("\n").map(l => "  " + l).join("\n");
-  src.value = v.slice(0,ls) + out + v.slice(le);
-  src.selectionStart = ls; src.selectionEnd = ls + out.length;
-  clearTimeout(t); t = setTimeout(() => render(false), 60);
-});
 
 document.getElementById("layout").onchange = () => render(true);
 document.getElementById("theme").onchange = () => render(false);
@@ -551,19 +481,16 @@ document.getElementById("expand").onclick = () => { collapsed.clear(); render(tr
 document.getElementById("zin").onclick = () => zoomBy(1.2);
 document.getElementById("zout").onclick = () => zoomBy(1/1.2);
 document.getElementById("reset").onclick = () => { view.k = 1; applyView(); };
-window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(() => render(false), 120); });
+window.addEventListener("resize", () => { render(false); });
 
-const sp = document.getElementById("splitter"), pane = document.getElementById("editor-pane");
-sp.addEventListener("pointerdown", e => {
-  sp.setPointerCapture(e.pointerId);
-  const move = ev => { pane.style.width = Math.max(200, Math.min(ev.clientX, window.innerWidth*0.6)) + "px"; };
-  const up = () => { sp.removeEventListener("pointermove", move); sp.removeEventListener("pointerup", up); render(false); };
-  sp.addEventListener("pointermove", move); sp.addEventListener("pointerup", up);
-});
+// Initialize
+(async () => {
+  const data = await fetchRoadmapData();
+  root = parse(data);
+  render(true);
+  setTimeout(() => fitView(), 60);
+})();
 
-src.value = SAMPLE;
-render(true);
-setTimeout(() => fitView(), 60);
 })();
 </script>
 </body>
