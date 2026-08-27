@@ -49,8 +49,12 @@
   label.toggle{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12.5px;cursor:pointer}
   main{flex:1;display:flex;min-height:0}
   #editor-pane{
-    flex:1;min-width:300px;
+    position:fixed;left:0;top:50px;width:400px;height:calc(100% - 50px);
     display:flex;flex-direction:column;background:var(--panel);border-right:1px solid var(--line);
+    z-index:100;transform:translateX(-100%);transition:transform 0.3s ease;
+  }
+  #editor-pane.visible{
+    transform:translateX(0);
   }
   .pane-head{
     padding:9px 8px;color:var(--muted);font-size:11px;letter-spacing:.9px;text-transform:uppercase;
@@ -64,7 +68,7 @@
     tab-size:2;
   }
   textarea::placeholder{color:#4d5f70}
-  #splitter{width:5px;cursor:col-resize;background:var(--ink)}
+  #splitter{display:none}
   #splitter:hover{background:var(--teal-dim)}
   #canvas-pane{flex:1;position:relative;min-width:0;background:var(--paper)}
   #map{width:100%;height:100%;display:block;cursor:grab;touch-action:none}
@@ -80,6 +84,7 @@
   }
   .node-box{cursor:pointer}
   .node-box:hover rect{filter:brightness(.96)}
+  .editor-toggle{position:absolute;left:12px;top:12px;z-index:50}
   @media (max-width:760px){
     main{flex-direction:column}
     #splitter{display:none}
@@ -122,6 +127,7 @@
   </section>
   <div id="splitter"></div>
   <section id="canvas-pane">
+    <button id="editor-toggle-btn" class="editor-toggle" title="Toggle Outline editor">✎</button>
     <svg id="map"></svg>
     <div class="float">
       <button id="zin" title="Zoom in">+</button>
@@ -540,12 +546,18 @@ document.getElementById("reset").onclick = () => { view.k = 1; applyView(); };
 document.getElementById("back-btn").onclick = () => window.history.back();
 window.addEventListener("resize", () => { clearTimeout(autoSaveTimer); autoSaveTimer = setTimeout(() => render(false), 120); });
 
-const sp = document.getElementById("splitter"), pane = document.getElementById("editor-pane");
-sp.addEventListener("pointerdown", e => {
-  sp.setPointerCapture(e.pointerId);
-  const move = ev => { pane.style.width = Math.max(300, Math.min(ev.clientX, window.innerWidth*0.7)) + "px"; };
-  const up = () => { sp.removeEventListener("pointermove", move); sp.removeEventListener("pointerup", up); render(false); };
-  sp.addEventListener("pointermove", move); sp.addEventListener("pointerup", up);
+// Toggle editor pane
+const editorPane = document.getElementById("editor-pane");
+const editorToggleBtn = document.getElementById("editor-toggle-btn");
+editorToggleBtn.onclick = () => {
+  editorPane.classList.toggle("visible");
+};
+
+// Close editor pane when clicking outside
+document.addEventListener("click", (e) => {
+  if(!editorPane.contains(e.target) && !editorToggleBtn.contains(e.target) && editorPane.classList.contains("visible")){
+    editorPane.classList.remove("visible");
+  }
 });
 
 const saved = localStorage.getItem("bgp_roadmap_outline");
