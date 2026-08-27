@@ -34,6 +34,7 @@
   }
   .brand{display:flex;align-items:baseline;gap:9px;margin-right:4px}
   .brand b{font-size:14px;letter-spacing:.2px}
+  .brand span{color:var(--muted);font-size:10px}
   .group{display:flex;align-items:center;gap:6px}
   .sep{width:1px;height:18px;background:var(--line)}
   button,select{
@@ -45,6 +46,8 @@
   button:focus-visible,select:focus-visible{outline:2px solid var(--teal);outline-offset:1px}
   button.primary{background:var(--teal);border-color:var(--teal);color:#04221c;font-weight:600}
   button.primary:hover{background:#1cbd9c;border-color:#1cbd9c}
+  button.back{background:#e74c3c;border-color:#e74c3c;color:#fff;font-weight:600}
+  button.back:hover{background:#c0392b;border-color:#c0392b}
   main{flex:1;display:flex;min-height:0}
   #canvas-pane{flex:1;position:relative;min-width:0;background:var(--paper)}
   #map{width:100%;height:100%;display:block;cursor:grab;touch-action:none}
@@ -66,7 +69,7 @@
 <body>
 
 <header>
-  <div class="brand"><b>Roadmap Visualizer</b></div>
+  <div class="brand"><b>Roadmap Visualizer</b><span>Full-screen view</span></div>
   <div class="sep"></div>
   <div class="group">
     <select id="layout" title="Layout">
@@ -89,8 +92,8 @@
     <button id="expand">Expand</button>
     <button class="primary" id="svg">Export SVG</button>
     <button id="png">Export PNG</button>
+    <button class="back" id="back-btn" style="margin-left:10px">← Back to Editor</button>
   </div>
-  <input type="file" id="file" accept=".txt,.md,.json" hidden>
 </header>
 
 <main>
@@ -109,24 +112,28 @@
 (function(){
 "use strict";
 
-// Parse roadmap data from URL or JSON API
-async function fetchRoadmapData() {
+// Get roadmap data from URL parameter
+function getRoadmapData() {
   const params = new URLSearchParams(window.location.search);
-  const roadmapId = params.get('id');
   
-  if (roadmapId) {
+  // Check for encoded data parameter
+  const encodedData = params.get('data');
+  if (encodedData) {
     try {
-      const response = await fetch(`/api/roadmap/${roadmapId}`);
-      if (response.ok) {
-        const data = await response.json();
-        return data.outline || data;
-      }
+      return decodeURIComponent(escape(atob(encodedData)));
     } catch (error) {
-      console.error('Failed to fetch roadmap:', error);
+      console.error('Failed to decode data:', error);
     }
   }
   
-  // Default sample if no backend available
+  // Check for roadmap ID parameter (backend API)
+  const roadmapId = params.get('id');
+  if (roadmapId) {
+    // For now, return null so it loads default
+    // Backend implementation would fetch from API here
+  }
+  
+  // Default sample
   return `Product Launch 2024
   Q1 Planning
     Market Research
@@ -481,15 +488,14 @@ document.getElementById("expand").onclick = () => { collapsed.clear(); render(tr
 document.getElementById("zin").onclick = () => zoomBy(1.2);
 document.getElementById("zout").onclick = () => zoomBy(1/1.2);
 document.getElementById("reset").onclick = () => { view.k = 1; applyView(); };
+document.getElementById("back-btn").onclick = () => window.history.back();
 window.addEventListener("resize", () => { render(false); });
 
 // Initialize
-(async () => {
-  const data = await fetchRoadmapData();
-  root = parse(data);
-  render(true);
-  setTimeout(() => fitView(), 60);
-})();
+const data = getRoadmapData();
+root = parse(data);
+render(true);
+setTimeout(() => fitView(), 60);
 
 })();
 </script>
